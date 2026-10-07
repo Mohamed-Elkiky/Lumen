@@ -12,7 +12,15 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
   set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
 endif()
 
-add_executable(lumen src/main.cpp)
+add_executable(lumen
+  src/main.cpp
+  src/camera.cpp
+  src/image.cpp
+  src/stb_impl.cpp
+)
+
+# stb uses sprintf etc., silence MSVC's "unsafe function" warnings for that file only
+set_source_files_properties(src/stb_impl.cpp PROPERTIES COMPILE_DEFINITIONS _CRT_SECURE_NO_WARNINGS)
 
 target_include_directories(lumen PRIVATE ${PROJECT_SOURCE_DIR}/include)
 # SYSTEM hides warnings from third-party headers
