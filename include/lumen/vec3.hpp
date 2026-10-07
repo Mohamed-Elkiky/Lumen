@@ -43,6 +43,12 @@ struct Vec3 {
 
     constexpr double length_squared() const { return x * x + y * y + z * z; }
     double length() const { return std::sqrt(length_squared()); }
+
+    // True if the vector is close to zero in every dimension.
+    bool near_zero() const {
+        constexpr double s = 1e-8;
+        return std::fabs(x) < s && std::fabs(y) < s && std::fabs(z) < s;
+    }
 };
 
 // Same type, different meaning. Makes signatures self-documenting.
@@ -72,6 +78,9 @@ constexpr Vec3 cross(const Vec3& a, const Vec3& b) {
 }
 
 inline Vec3 unit_vector(const Vec3& v) { return v / v.length(); }
+
+// Mirror v about the surface normal n (n must be unit length).
+constexpr Vec3 reflect(const Vec3& v, const Vec3& n) { return v - 2.0 * dot(v, n) * n; }
 
 inline std::ostream& operator<<(std::ostream& out, const Vec3& v) {
     return out << '(' << v.x << ", " << v.y << ", " << v.z << ')';

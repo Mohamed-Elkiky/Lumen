@@ -2,14 +2,17 @@
 
 #include <algorithm>
 #include <cmath>
+#include <memory>
 
 #include "lumen/hittable.hpp"
+#include "lumen/material.hpp"
 
 namespace lumen {
 
 class Sphere : public Hittable {
 public:
-    Sphere(const Point3& center, double radius) : center_(center), radius_(std::max(0.0, radius)) {}
+    Sphere(const Point3& center, double radius, std::shared_ptr<Material> mat)
+        : center_(center), radius_(std::max(0.0, radius)), mat_(std::move(mat)) {}
 
     bool hit(const Ray& r, Interval ray_t, HitRecord& rec) const override {
         // Solve |O + tD - C|^2 = r^2 for t, using h = b / 2 to drop the factors of 2.
@@ -34,12 +37,14 @@ public:
         rec.p = r.at(root);
         const Vec3 outward_normal = (rec.p - center_) / radius_;
         rec.set_face_normal(r, outward_normal);
+        rec.mat = mat_.get();
         return true;
     }
 
 private:
     Point3 center_;
     double radius_;
+    std::shared_ptr<Material> mat_;
 };
 
 }  // namespace lumen
