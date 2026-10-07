@@ -1,24 +1,41 @@
 #include <chrono>
 #include <iostream>
+#include <memory>
 
 #include "lumen/camera.hpp"
+#include "lumen/hittable.hpp"
+#include "lumen/hittable_list.hpp"
 #include "lumen/image.hpp"
+#include "lumen/interval.hpp"
 #include "lumen/ray.hpp"
+#include "lumen/sphere.hpp"
 #include "lumen/vec3.hpp"
 #include "lumen/version.hpp"
 
 using namespace lumen;
 
-// Sky: blend white to blue based on how far up the ray points.
-Color ray_color(const Ray& r) {
+Color ray_color(const Ray& r, const Hittable& world) {
+    HitRecord rec;
+    if (world.hit(r, Interval(0.0, kInfinity), rec)) {
+        // Map normal from [-1, 1] to [0, 1] and show it as a colour.
+        return 0.5 * (rec.normal + Color{1.0, 1.0, 1.0});
+    }
+
+    // Sky: blend white to blue based on how far up the ray points.
     const Vec3 dir = unit_vector(r.direction());
-    const double a = 0.5 * (dir.y + 1.0);  // map y from [-1, 1] to [0, 1]
+    const double a = 0.5 * (dir.y + 1.0);
     return (1.0 - a) * Color{1.0, 1.0, 1.0} + a * Color{0.5, 0.7, 1.0};
 }
 
 int main() {
     std::cout << "Lumen v" << kVersion << '\n';
 
+    // Scene
+    HittableList world;
+    world.add(std::make_shared<Sphere>(Point3{0.0, 0.0, -1.0}, 0.5));       // centre sphere
+    world.add(std::make_shared<Sphere>(Point3{0.0, -100.5, -1.0}, 100.0));  // ground
+
+    // Camera
     CameraConfig config;
     config.image_width = 800;
     config.vfov = 90.0;
@@ -32,7 +49,7 @@ int main() {
 
     for (int j = 0; j < image.height(); ++j) {
         for (int i = 0; i < image.width(); ++i) {
-            image.set(i, j, ray_color(camera.get_ray(i, j)));
+            image.set(i, j, ray_color(camera.get_ray(i, j), world));
         }
     }
 
