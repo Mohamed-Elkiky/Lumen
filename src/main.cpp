@@ -57,39 +57,80 @@ Color ray_color(const Ray& r, int depth, const Hittable& world) {
     return (1.0 - a) * Color{1.0, 1.0, 1.0} + a * Color{0.5, 0.7, 1.0};
 }
 
-int main() {
-    std::cout << "Lumen v" << kVersion << '\n';
+// ---------- Scenes ----------
 
-    // Materials
-    auto ground = std::make_shared<Lambertian>(Color{0.8, 0.8, 0.0});  // yellow-green matte
-    auto center = std::make_shared<Lambertian>(Color{0.1, 0.2, 0.5});  // blue matte
-    auto glass = std::make_shared<Dielectric>(1.5);                     // glass
-    auto bubble = std::make_shared<Dielectric>(1.0 / 1.5);              // air pocket inside glass
-    auto gold = std::make_shared<Metal>(Color{0.8, 0.6, 0.2}, 0.3);     // fuzzy gold
-    auto light = std::make_shared<DiffuseLight>(Color{4.0, 4.0, 4.0});  // bright white panel    
-    
-    // Scene
-    HittableList world;
+// Three spheres (glass, matte, gold) lit by a ceiling panel. Sprint 2 materials test.
+void spheres_under_light(HittableList& world, CameraConfig& config, Color& background) {
+    auto ground = std::make_shared<Lambertian>(Color{0.8, 0.8, 0.0});
+    auto center = std::make_shared<Lambertian>(Color{0.1, 0.2, 0.5});
+    auto glass = std::make_shared<Dielectric>(1.5);
+    auto bubble = std::make_shared<Dielectric>(1.0 / 1.5);
+    auto gold = std::make_shared<Metal>(Color{0.8, 0.6, 0.2}, 0.3);
+    auto light = std::make_shared<DiffuseLight>(Color{4.0, 4.0, 4.0});
+
     world.add(std::make_shared<Sphere>(Point3{0.0, -100.5, -1.0}, 100.0, ground));
     world.add(std::make_shared<Sphere>(Point3{0.0, 0.0, -1.2}, 0.5, center));
-    world.add(std::make_shared<Sphere>(Point3{-1.0, 0.0, -1.0}, 0.5, glass));   // outer glass
-    world.add(std::make_shared<Sphere>(Point3{-1.0, 0.0, -1.0}, 0.4, bubble));  // hollow inside
+    world.add(std::make_shared<Sphere>(Point3{-1.0, 0.0, -1.0}, 0.5, glass));
+    world.add(std::make_shared<Sphere>(Point3{-1.0, 0.0, -1.0}, 0.4, bubble));
     world.add(std::make_shared<Sphere>(Point3{1.0, 0.0, -1.0}, 0.5, gold));
-
-    // Ceiling light: 3 x 2 panel hovering above the spheres
     world.add(std::make_shared<Quad>(Point3{-1.5, 1.5, -2.0}, Vec3{3.0, 0.0, 0.0},
                                      Vec3{0.0, 0.0, 2.0}, light));
 
-    const Color background{0.0, 0.0, 0.0};  // black: the light panel is the only light
-    
-    // Camera
-    CameraConfig config;
+    config.aspect_ratio = 16.0 / 9.0;
     config.image_width = 800;
     config.vfov = 45.0;
     config.samples_per_pixel = 200;
     config.max_depth = 50;
     config.look_from = {0, 0.5, 2};
     config.look_at = {0, 0, -1};
+
+    background = Color{0.0, 0.0, 0.0};
+}
+
+// Classic Cornell box: red/green walls, white room, ceiling light, glass + mirror spheres.
+void cornell_box(HittableList& world, CameraConfig& config, Color& background) {
+    auto red = std::make_shared<Lambertian>(Color{0.65, 0.05, 0.05});
+    auto white = std::make_shared<Lambertian>(Color{0.73, 0.73, 0.73});
+    auto green = std::make_shared<Lambertian>(Color{0.12, 0.45, 0.15});
+    auto light = std::make_shared<DiffuseLight>(Color{15.0, 15.0, 15.0});
+    auto glass = std::make_shared<Dielectric>(1.5);
+    auto mirror = std::make_shared<Metal>(Color{0.8, 0.85, 0.88}, 0.0);
+
+    // Room: 555 units on each side. Camera looks down +z, so x = 555 is on the left.
+    world.add(std::make_shared<Quad>(Point3{555, 0, 0}, Vec3{0, 555, 0}, Vec3{0, 0, 555}, red));    // left
+    world.add(std::make_shared<Quad>(Point3{0, 0, 0}, Vec3{0, 555, 0}, Vec3{0, 0, 555}, green));    // right
+    world.add(std::make_shared<Quad>(Point3{0, 0, 0}, Vec3{555, 0, 0}, Vec3{0, 0, 555}, white));    // floor
+    world.add(std::make_shared<Quad>(Point3{555, 555, 555}, Vec3{-555, 0, 0}, Vec3{0, 0, -555}, white));  // ceiling
+    world.add(std::make_shared<Quad>(Point3{0, 0, 555}, Vec3{555, 0, 0}, Vec3{0, 555, 0}, white));  // back
+
+    // Light panel, just below the ceiling
+    world.add(std::make_shared<Quad>(Point3{343, 554, 332}, Vec3{-130, 0, 0}, Vec3{0, 0, -105}, light));
+
+    // Contents
+    world.add(std::make_shared<Sphere>(Point3{190, 90, 190}, 90, glass));    // front right
+    world.add(std::make_shared<Sphere>(Point3{370, 100, 370}, 100, mirror)); // back left
+
+    config.aspect_ratio = 1.0;
+    config.image_width = 600;
+    config.vfov = 40.0;
+    config.samples_per_pixel = 500;
+    config.max_depth = 50;
+    config.look_from = {278, 278, -800};
+    config.look_at = {278, 278, 0};
+
+    background = Color{0.0, 0.0, 0.0};
+}
+
+int main() {
+    std::cout << "Lumen v" << kVersion << '\n';
+
+    HittableList world;
+    CameraConfig config;
+    Color background;
+
+    // Pick which scene to render
+    cornell_box(world, config, background);
+    // spheres_under_light(world, config, background);
 
     const Camera camera(config);
     Image image(camera.image_width(), camera.image_height());
