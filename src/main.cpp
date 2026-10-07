@@ -8,12 +8,32 @@
 #include "lumen/image.hpp"
 #include "lumen/interval.hpp"
 #include "lumen/material.hpp"
+#include "lumen/quad.hpp"
 #include "lumen/ray.hpp"
 #include "lumen/sphere.hpp"
 #include "lumen/vec3.hpp"
 #include "lumen/version.hpp"
 
 using namespace lumen;
+
+Color ray_color(const Ray& r, int depth, const Hittable& world, const Color& background) {
+    // Bounce limit reached: no more light gathered.
+    if (depth <= 0) return Color{0.0, 0.0, 0.0};
+
+    HitRecord rec;
+    // t_min = 0.001 stops a bounced ray re-hitting the surface it just left ("shadow acne").
+    if (!world.hit(r, Interval(0.001, kInfinity), rec)) return background;
+
+    // Light the surface gives off itself (only lights are non-black).
+    const Color emission = rec.mat->emitted();
+
+    Ray scattered;
+    Color attenuation;
+    // Lights don't scatter: just return their glow.
+    if (!rec.mat->scatter(r, rec, attenuation, scattered)) return emission;
+
+    return emission + attenuation * ray_color(scattered, depth - 1, world, background);
+}
 
 Color ray_color(const Ray& r, int depth, const Hittable& world) {
     // Bounce limit reached: no more light gathered.
@@ -46,6 +66,7 @@ int main() {
     auto glass = std::make_shared<Dielectric>(1.5);                     // glass
     auto bubble = std::make_shared<Dielectric>(1.0 / 1.5);              // air pocket inside glass
     auto gold = std::make_shared<Metal>(Color{0.8, 0.6, 0.2}, 0.3);     // fuzzy gold
+    auto light = std::make_shared<DiffuseLight>(Color{4.0, 4.0, 4.0});  // bright white panel    
     
     // Scene
     HittableList world;
@@ -55,11 +76,17 @@ int main() {
     world.add(std::make_shared<Sphere>(Point3{-1.0, 0.0, -1.0}, 0.4, bubble));  // hollow inside
     world.add(std::make_shared<Sphere>(Point3{1.0, 0.0, -1.0}, 0.5, gold));
 
+    // Ceiling light: 3 x 2 panel hovering above the spheres
+    world.add(std::make_shared<Quad>(Point3{-1.5, 1.5, -2.0}, Vec3{3.0, 0.0, 0.0},
+                                     Vec3{0.0, 0.0, 2.0}, light));
+
+    const Color background{0.0, 0.0, 0.0};  // black: the light panel is the only light
+    
     // Camera
     CameraConfig config;
     config.image_width = 800;
     config.vfov = 45.0;
-    config.samples_per_pixel = 100;
+    config.samples_per_pixel = 200;
     config.max_depth = 50;
     config.look_from = {0, 0.5, 2};
     config.look_at = {0, 0, -1};
@@ -75,8 +102,7 @@ int main() {
         for (int i = 0; i < image.width(); ++i) {
             Color pixel_color{0.0, 0.0, 0.0};
             for (int s = 0; s < camera.samples_per_pixel(); ++s) {
-                pixel_color += ray_color(camera.get_ray(i, j), camera.max_depth(), world);
-            }
+                pixel_color += ray_color(camera.get_ray(i, j), camera.max_depth(), world, background);            }
             image.set(i, j, pixel_color / camera.samples_per_pixel());
         }
     }

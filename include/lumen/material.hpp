@@ -17,6 +17,9 @@ public:
     // Returns true if the ray scatters. attenuation = how much of each colour survives.
     virtual bool scatter(const Ray& r_in, const HitRecord& rec, Color& attenuation,
                          Ray& scattered) const = 0;
+
+    // Light given off by the surface. Black for everything except lights.
+    virtual Color emitted() const { return Color{0.0, 0.0, 0.0}; }
 };
 
 // Matte: scatters light in random directions around the normal.
@@ -101,6 +104,22 @@ private:
     }
 
     double refraction_index_;  // glass 1.5, water 1.33, diamond 2.4
+};
+
+// Light source: glows with a colour, never scatters. Values above 1 = brighter.
+class DiffuseLight : public Material {
+public:
+    explicit DiffuseLight(const Color& emit) : emit_(emit) {}
+
+    bool scatter(const Ray& /*r_in*/, const HitRecord& /*rec*/, Color& /*attenuation*/,
+                 Ray& /*scattered*/) const override {
+        return false;
+    }
+
+    Color emitted() const override { return emit_; }
+
+private:
+    Color emit_;
 };
 
 }  // namespace lumen

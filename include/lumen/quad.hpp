@@ -1,0 +1,57 @@
+#pragma once
+
+#include <cmath>
+#include <memory>
+
+#include "lumen/hittable.hpp"
+#include "lumen/material.hpp"
+
+namespace lumen {
+
+// Flat parallelogram: corner Q, edges u and v. Walls, floors, light panels.
+class Quad : public Hittable {
+public:
+    Quad(const Point3& Q, const Vec3& u, const Vec3& v, std::shared_ptr<Material> mat)
+        : Q_(Q), u_(u), v_(v), mat_(std::move(mat)) {
+        const Vec3 n = cross(u_, v_);
+        normal_ = unit_vector(n);
+        D_ = dot(normal_, Q_);    // plane equation: dot(normal, P) = D
+        w_ = n / dot(n, n);       // used to get planar coordinates
+    }
+
+    bool hit(const Ray& r, Interval ray_t, HitRecord& rec) const override {
+        const double denom = dot(normal_, r.direction());
+
+        // Ray is parallel to the plane: no hit.
+        if (std::fabs(denom) < 1e-8) return false;
+
+        // Where the ray meets the plane.
+        const double t = (D_ - dot(normal_, r.origin())) / denom;
+        if (!ray_t.contains(t)) return false;
+
+        // Express the hit point in quad coordinates (alpha along u, beta along v).
+        const Point3 intersection = r.at(t);
+        const Vec3 planar_hit = intersection - Q_;
+        const double alpha = dot(w_, cross(planar_hit, v_));
+        const double beta = dot(w_, cross(u_, planar_hit));
+
+        // Inside the quad only if both are in [0, 1].
+        if (alpha < 0.0 || alpha > 1.0 || beta < 0.0 || beta > 1.0) return false;
+
+        rec.t = t;
+        rec.p = intersection;
+        rec.mat = mat_.get();
+        rec.set_face_normal(r, normal_);
+        return true;
+    }
+
+private:
+    Point3 Q_;
+    Vec3 u_, v_;
+    Vec3 w_;
+    Vec3 normal_;
+    double D_;
+    std::shared_ptr<Material> mat_;
+};
+
+}  // namespace lumen
