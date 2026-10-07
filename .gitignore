@@ -1,0 +1,20 @@
+# Build output
+build/
+cmake-build-*/
+out/
+
+# Renders (keep showcase images only)
+*.png
+*.ppm
+!renders/*.png
+!docs/*.png
+
+# IDE / editor
+.vscode/
+.idea/
+.vs/
+*.swp
+.DS_Store
+
+# Large models (download separately, see README)
+assets/models/
