@@ -1,6 +1,7 @@
 #include "lumen/image.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <cstdint>
 
 #include "stb_image_write.h"
@@ -8,6 +9,9 @@
 namespace lumen {
 
 namespace {
+// Linear light -> gamma 2. Monitors expect gamma-encoded values; without this images look too dark.
+double linear_to_gamma(double linear) { return linear > 0.0 ? std::sqrt(linear) : 0.0; }
+
 std::uint8_t to_byte(double component) {
     const double clamped = std::clamp(component, 0.0, 0.999);
     return static_cast<std::uint8_t>(256.0 * clamped);
@@ -21,9 +25,9 @@ bool Image::write_png(const std::string& path) const {
     std::vector<std::uint8_t> bytes;
     bytes.reserve(pixels_.size() * 3);
     for (const Color& c : pixels_) {
-        bytes.push_back(to_byte(c.x));
-        bytes.push_back(to_byte(c.y));
-        bytes.push_back(to_byte(c.z));
+        bytes.push_back(to_byte(linear_to_gamma(c.x)));
+        bytes.push_back(to_byte(linear_to_gamma(c.y)));
+        bytes.push_back(to_byte(linear_to_gamma(c.z)));
     }
     return stbi_write_png(path.c_str(), width_, height_, 3, bytes.data(), width_ * 3) != 0;
 }

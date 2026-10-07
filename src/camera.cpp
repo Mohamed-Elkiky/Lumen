@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <cmath>
 
+#include "lumen/random.hpp"
+
 namespace lumen {
 
 namespace {
@@ -13,6 +15,8 @@ constexpr double degrees_to_radians(double degrees) { return degrees * kPi / 180
 Camera::Camera(const CameraConfig& config)
     : image_width_(config.image_width),
       image_height_(std::max(1, static_cast<int>(config.image_width / config.aspect_ratio))),
+      samples_per_pixel_(std::max(1, config.samples_per_pixel)),
+      max_depth_(std::max(1, config.max_depth)),
       center_(config.look_from) {
     // Viewport size from the field of view
     const double focal_length = (config.look_from - config.look_at).length();
@@ -39,8 +43,13 @@ Camera::Camera(const CameraConfig& config)
 }
 
 Ray Camera::get_ray(int i, int j) const {
-    const Point3 pixel_center = pixel00_ + i * pixel_delta_u_ + j * pixel_delta_v_;
-    return {center_, pixel_center - center_};
+    // Random offset inside the pixel square [-0.5, 0.5) so edges get averaged (antialiasing).
+    const double offset_x = random_double() - 0.5;
+    const double offset_y = random_double() - 0.5;
+
+    const Point3 pixel_sample =
+        pixel00_ + (i + offset_x) * pixel_delta_u_ + (j + offset_y) * pixel_delta_v_;
+    return {center_, pixel_sample - center_};
 }
 
 }  // namespace lumen
