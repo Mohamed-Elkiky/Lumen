@@ -48,10 +48,12 @@ int main() {
     const auto start = std::chrono::steady_clock::now();
 
     for (int j = 0; j < image.height(); ++j) {
+        std::clog << "\rScanlines remaining: " << (image.height() - j) << ' ' << std::flush;
         for (int i = 0; i < image.width(); ++i) {
             image.set(i, j, ray_color(camera.get_ray(i, j), world));
         }
     }
+    std::clog << "\rDone.                    \n";
 
     const auto end = std::chrono::steady_clock::now();
     const auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
