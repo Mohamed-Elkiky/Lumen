@@ -79,8 +79,16 @@ constexpr Vec3 cross(const Vec3& a, const Vec3& b) {
 
 inline Vec3 unit_vector(const Vec3& v) { return v / v.length(); }
 
-// Mirror v about the surface normal n (n must be unit length).
 constexpr Vec3 reflect(const Vec3& v, const Vec3& n) { return v - 2.0 * dot(v, n) * n; }
+
+// Bend unit vector uv through a surface with normal n (Snell's law).
+// eta_ratio = refractive index we're leaving / index we're entering.
+inline Vec3 refract(const Vec3& uv, const Vec3& n, double eta_ratio) {
+    const double cos_theta = std::fmin(dot(-uv, n), 1.0);
+    const Vec3 r_out_perp = eta_ratio * (uv + cos_theta * n);
+    const Vec3 r_out_parallel = -std::sqrt(std::fabs(1.0 - r_out_perp.length_squared())) * n;
+    return r_out_perp + r_out_parallel;
+}
 
 inline std::ostream& operator<<(std::ostream& out, const Vec3& v) {
     return out << '(' << v.x << ", " << v.y << ", " << v.z << ')';

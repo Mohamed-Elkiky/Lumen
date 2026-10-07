@@ -43,14 +43,16 @@ int main() {
     // Materials
     auto ground = std::make_shared<Lambertian>(Color{0.8, 0.8, 0.0});  // yellow-green matte
     auto center = std::make_shared<Lambertian>(Color{0.1, 0.2, 0.5});  // blue matte
-    auto mirror = std::make_shared<Metal>(Color{0.8, 0.8, 0.8}, 0.0);   // perfect mirror
+    auto glass = std::make_shared<Dielectric>(1.5);                     // glass
+    auto bubble = std::make_shared<Dielectric>(1.0 / 1.5);              // air pocket inside glass
     auto gold = std::make_shared<Metal>(Color{0.8, 0.6, 0.2}, 0.3);     // fuzzy gold
-
+    
     // Scene
     HittableList world;
     world.add(std::make_shared<Sphere>(Point3{0.0, -100.5, -1.0}, 100.0, ground));
     world.add(std::make_shared<Sphere>(Point3{0.0, 0.0, -1.2}, 0.5, center));
-    world.add(std::make_shared<Sphere>(Point3{-1.0, 0.0, -1.0}, 0.5, mirror));
+    world.add(std::make_shared<Sphere>(Point3{-1.0, 0.0, -1.0}, 0.5, glass));   // outer glass
+    world.add(std::make_shared<Sphere>(Point3{-1.0, 0.0, -1.0}, 0.4, bubble));  // hollow inside
     world.add(std::make_shared<Sphere>(Point3{1.0, 0.0, -1.0}, 0.5, gold));
 
     // Camera

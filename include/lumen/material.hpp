@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cmath>
+
 #include "lumen/hittable.hpp"
 #include "lumen/random.hpp"
 #include "lumen/ray.hpp"
@@ -58,6 +60,47 @@ public:
 private:
     Color albedo_;
     double fuzz_;  // 0 = perfect mirror, 1 = very blurry
+};
+
+// Glass / water / diamond: refracts through the surface, reflects at grazing angles.
+class Dielectric : public Material {
+public:
+    explicit Dielectric(double refraction_index) : refraction_index_(refraction_index) {}
+
+    bool scatter(const Ray& r_in, const HitRecord& rec, Color& attenuation,
+                 Ray& scattered) const override {
+        attenuation = Color{1.0, 1.0, 1.0};  // glass absorbs nothing
+
+        // Entering the glass: air (1.0) -> glass. Leaving: glass -> air.
+        const double ri = rec.front_face ? (1.0 / refraction_index_) : refraction_index_;
+
+        const Vec3 unit_direction = unit_vector(r_in.direction());
+        const double cos_theta = std::fmin(dot(-unit_direction, rec.normal), 1.0);
+        const double sin_theta = std::sqrt(1.0 - cos_theta * cos_theta);
+
+        // Snell's law has no solution: total internal reflection.
+        const bool cannot_refract = ri * sin_theta > 1.0;
+
+        Vec3 direction;
+        if (cannot_refract || reflectance(cos_theta, ri) > random_double()) {
+            direction = reflect(unit_direction, rec.normal);
+        } else {
+            direction = refract(unit_direction, rec.normal, ri);
+        }
+
+        scattered = Ray(rec.p, direction);
+        return true;
+    }
+
+private:
+    // Schlick's approximation: how much light reflects instead of refracting at this angle.
+    static double reflectance(double cosine, double ri) {
+        double r0 = (1.0 - ri) / (1.0 + ri);
+        r0 = r0 * r0;
+        return r0 + (1.0 - r0) * std::pow(1.0 - cosine, 5);
+    }
+
+    double refraction_index_;  // glass 1.5, water 1.33, diamond 2.4
 };
 
 }  // namespace lumen
