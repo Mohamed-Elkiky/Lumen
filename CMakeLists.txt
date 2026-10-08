@@ -16,9 +16,9 @@ add_executable(lumen
   src/main.cpp
   src/camera.cpp
   src/image.cpp
+  src/obj_loader.cpp
   src/stb_impl.cpp
 )
-
 # stb uses sprintf etc., silence MSVC's "unsafe function" warnings for that file only
 set_source_files_properties(src/stb_impl.cpp PROPERTIES COMPILE_DEFINITIONS _CRT_SECURE_NO_WARNINGS)
 
@@ -45,3 +45,10 @@ add_test(NAME vec3 COMMAND test_vec3)
 add_executable(test_triangle tests/test_triangle.cpp)
 target_include_directories(test_triangle PRIVATE ${PROJECT_SOURCE_DIR}/include)
 add_test(NAME triangle COMMAND test_triangle)
+
+add_executable(test_obj_loader tests/test_obj_loader.cpp src/obj_loader.cpp)
+target_include_directories(test_obj_loader PRIVATE ${PROJECT_SOURCE_DIR}/include)
+target_include_directories(test_obj_loader SYSTEM PRIVATE ${PROJECT_SOURCE_DIR}/external)
+target_compile_definitions(test_obj_loader PRIVATE
+  LUMEN_TEST_DATA_DIR="${PROJECT_SOURCE_DIR}/tests/data")
+add_test(NAME obj_loader COMMAND test_obj_loader)

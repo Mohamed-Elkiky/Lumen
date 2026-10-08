@@ -1,0 +1,7 @@
+# Unit square in z = 0 as one quad face, every corner tilted to normal (0, 0.6, 0.8).
+v 0 0 0
+v 1 0 0
+v 1 1 0
+v 0 1 0
+vn 0 0.6 0.8
+f 1//1 2//1 3//1 4//1

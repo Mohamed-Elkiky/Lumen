@@ -1,6 +1,8 @@
 #include <chrono>
 #include <iostream>
 #include <memory>
+#include <stdexcept>
+#include <string>
 
 #include "lumen/camera.hpp"
 #include "lumen/hittable.hpp"
@@ -8,6 +10,7 @@
 #include "lumen/image.hpp"
 #include "lumen/interval.hpp"
 #include "lumen/material.hpp"
+#include "lumen/obj_loader.hpp"
 #include "lumen/quad.hpp"
 #include "lumen/ray.hpp"
 #include "lumen/sphere.hpp"
@@ -154,6 +157,71 @@ void triangles_scene(HittableList& world, CameraConfig& config, Color& backgroun
     background = Color{0.7, 0.8, 1.0};  // bright sky acts as the light source
 }
 
+// ---------- Mesh scenes (Sprint 3) ----------
+// Models live in assets/models/ (not committed, see README). Run lumen from the repo root.
+
+// One model on a grey floor under a bright sky. Shared by the teapot, bunny and dragon scenes
+// so their render times are directly comparable.
+void mesh_scene(HittableList& world, CameraConfig& config, Color& background,
+                const std::string& path, const Transform& transform,
+                std::shared_ptr<Material> material) {
+    auto ground = std::make_shared<Lambertian>(Color{0.5, 0.5, 0.5});
+    world.add(std::make_shared<Sphere>(Point3{0, -1000, 0}, 1000, ground));
+
+    ObjLoadOptions options;
+    options.generate_normals_if_missing = true;  // bunny/teapot/dragon ship without normals
+
+    const auto load_start = std::chrono::steady_clock::now();
+    const auto triangles = load_obj(path, std::move(material), transform, options);
+    const auto load_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                             std::chrono::steady_clock::now() - load_start)
+                             .count();
+    for (const auto& tri : triangles) world.add(tri);
+    std::cout << "Loaded " << path << ": " << triangles.size() << " triangles in " << load_ms
+              << " ms\n";
+
+    config.aspect_ratio = 1.0;
+    config.image_width = 400;
+    config.vfov = 30.0;
+    config.samples_per_pixel = 16;
+    config.max_depth = 10;
+    config.look_from = {0, 1.6, 5};
+    config.look_at = {0, 0.7, 0};
+
+    background = Color{0.7, 0.8, 1.0};
+}
+
+// Utah teapot, ~6.3k triangles. Source units are ~6 wide, so halve it.
+void teapot_scene(HittableList& world, CameraConfig& config, Color& background) {
+    Transform t;
+    t.scale = 0.5;
+    t.rotate_y_degrees = -30.0;
+    t.translate = {-0.1, 0.0, 0.0};
+    mesh_scene(world, config, background, "assets/models/teapot.obj", t,
+               std::make_shared<Metal>(Color{0.85, 0.85, 0.88}, 0.15));
+}
+
+// Sir Hops-a-Lot, the Stanford bunny, ~69k triangles. Source is in metres (15 cm tall),
+// so scale up 10x.
+void bunny_scene(HittableList& world, CameraConfig& config, Color& background) {
+    Transform t;
+    t.scale = 10.0;
+    t.rotate_y_degrees = 20.0;
+    t.translate = {0.17, -0.33, 0.0};  // centre in x, feet on the floor
+    mesh_scene(world, config, background, "assets/models/stanford-bunny.obj", t,
+               std::make_shared<Lambertian>(Color{0.75, 0.6, 0.45}));
+}
+
+// XYZ RGB dragon, ~250k triangles. The stress test: hopeless without a BVH.
+void dragon_scene(HittableList& world, CameraConfig& config, Color& background) {
+    Transform t;
+    t.scale = 0.015;
+    t.rotate_y_degrees = 30.0;
+    t.translate = {0.0, 0.94, 0.0};
+    mesh_scene(world, config, background, "assets/models/xyzrgb_dragon.obj", t,
+               std::make_shared<Metal>(Color{0.8, 0.6, 0.2}, 0.2));
+}
+
 int main() {
     std::cout << "Lumen v" << kVersion << '\n';
 
@@ -162,9 +230,17 @@ int main() {
     Color background;
 
     // Pick which scene to render
-    //cornell_box(world, config, background);
-    // spheres_under_light(world, config, background);
-    triangles_scene(world, config, background);
+    try {
+        //cornell_box(world, config, background);
+        //spheres_under_light(world, config, background);
+        //triangles_scene(world, config, background);
+        //teapot_scene(world, config, background);
+        bunny_scene(world, config, background);
+        //dragon_scene(world, config, background);
+    } catch (const std::exception& e) {
+        std::cerr << e.what() << '\n';
+        return 1;
+    }
 
     const Camera camera(config);
     Image image(camera.image_width(), camera.image_height());
@@ -177,7 +253,8 @@ int main() {
         for (int i = 0; i < image.width(); ++i) {
             Color pixel_color{0.0, 0.0, 0.0};
             for (int s = 0; s < camera.samples_per_pixel(); ++s) {
-                pixel_color += ray_color(camera.get_ray(i, j), camera.max_depth(), world, background);            }
+                pixel_color += ray_color(camera.get_ray(i, j), camera.max_depth(), world, background);
+            }            
             image.set(i, j, pixel_color / camera.samples_per_pixel());
         }
     }
