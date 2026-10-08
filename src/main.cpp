@@ -11,6 +11,7 @@
 #include "lumen/quad.hpp"
 #include "lumen/ray.hpp"
 #include "lumen/sphere.hpp"
+#include "lumen/triangle.hpp"
 #include "lumen/vec3.hpp"
 #include "lumen/version.hpp"
 
@@ -120,6 +121,38 @@ void cornell_box(HittableList& world, CameraConfig& config, Color& background) {
 
     background = Color{0.0, 0.0, 0.0};
 }
+// A single triangle and a tetrahedron built from 4 triangles. Sprint 3 geometry test.
+void triangles_scene(HittableList& world, CameraConfig& config, Color& background) {
+    auto ground = std::make_shared<Lambertian>(Color{0.5, 0.5, 0.5});
+    auto red = std::make_shared<Lambertian>(Color{0.8, 0.15, 0.1});
+    auto blue = std::make_shared<Lambertian>(Color{0.2, 0.35, 0.75});
+
+    world.add(std::make_shared<Sphere>(Point3{0, -1000, 0}, 1000, ground));
+
+    // Single triangle (left)
+    world.add(std::make_shared<Triangle>(Point3{-2.2, 0, 0}, Point3{-0.4, 0, 0},
+                                         Point3{-1.3, 1.5, 0}, red));
+
+    // Tetrahedron (right): 3 base corners + apex, 4 faces
+    const Point3 b0{0.5, 0, 0.6};
+    const Point3 b1{1.9, 0, 0.6};
+    const Point3 b2{1.2, 0, -0.7};
+    const Point3 apex{1.2, 1.4, 0.1};
+    world.add(std::make_shared<Triangle>(b0, b1, apex, blue));
+    world.add(std::make_shared<Triangle>(b1, b2, apex, blue));
+    world.add(std::make_shared<Triangle>(b2, b0, apex, blue));
+    world.add(std::make_shared<Triangle>(b0, b2, b1, blue));  // base
+
+    config.aspect_ratio = 16.0 / 9.0;
+    config.image_width = 800;
+    config.vfov = 40.0;
+    config.samples_per_pixel = 100;
+    config.max_depth = 50;
+    config.look_from = {4.5, 2.5, 4};
+    config.look_at = {0.2, 0.5, 0};
+
+    background = Color{0.7, 0.8, 1.0};  // bright sky acts as the light source
+}
 
 int main() {
     std::cout << "Lumen v" << kVersion << '\n';
@@ -129,8 +162,9 @@ int main() {
     Color background;
 
     // Pick which scene to render
-    cornell_box(world, config, background);
+    //cornell_box(world, config, background);
     // spheres_under_light(world, config, background);
+    triangles_scene(world, config, background);
 
     const Camera camera(config);
     Image image(camera.image_width(), camera.image_height());

@@ -41,3 +41,7 @@ enable_testing()
 add_executable(test_vec3 tests/test_vec3.cpp)
 target_include_directories(test_vec3 PRIVATE ${PROJECT_SOURCE_DIR}/include)
 add_test(NAME vec3 COMMAND test_vec3)
+
+add_executable(test_triangle tests/test_triangle.cpp)
+target_include_directories(test_triangle PRIVATE ${PROJECT_SOURCE_DIR}/include)
+add_test(NAME triangle COMMAND test_triangle)
