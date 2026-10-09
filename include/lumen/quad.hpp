@@ -17,7 +17,12 @@ public:
         normal_ = unit_vector(n);
         D_ = dot(normal_, Q_);    // plane equation: dot(normal, P) = D
         w_ = n / dot(n, n);       // used to get planar coordinates
+
+        // Box around all four corners (the two diagonals cover them).
+        bbox_ = AABB(AABB(Q_, Q_ + u_ + v_), AABB(Q_ + u_, Q_ + v_));
     }
+
+    AABB bounding_box() const override { return bbox_; }
 
     bool hit(const Ray& r, Interval ray_t, HitRecord& rec) const override {
         const double denom = dot(normal_, r.direction());
@@ -52,6 +57,7 @@ private:
     Vec3 normal_;
     double D_;
     std::shared_ptr<Material> mat_;
+    AABB bbox_;
 };
 
 }  // namespace lumen

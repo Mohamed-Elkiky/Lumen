@@ -12,8 +12,10 @@ namespace lumen {
 class Sphere : public Hittable {
 public:
     Sphere(const Point3& center, double radius, std::shared_ptr<Material> mat)
-        : center_(center), radius_(std::max(0.0, radius)), mat_(std::move(mat)) {}
-
+        : center_(center), radius_(std::max(0.0, radius)), mat_(std::move(mat)) {
+        const Vec3 r{radius_, radius_, radius_};
+        bbox_ = AABB(center_ - r, center_ + r);
+    }
     bool hit(const Ray& r, Interval ray_t, HitRecord& rec) const override {
         // Solve |O + tD - C|^2 = r^2 for t, using h = b / 2 to drop the factors of 2.
         const Vec3 oc = center_ - r.origin();
@@ -41,10 +43,13 @@ public:
         return true;
     }
 
+    AABB bounding_box() const override { return bbox_; }
+
 private:
     Point3 center_;
     double radius_;
     std::shared_ptr<Material> mat_;
+    AABB bbox_;
 };
 
 }  // namespace lumen

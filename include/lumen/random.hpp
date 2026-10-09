@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <random>
 
 #include "lumen/vec3.hpp"
@@ -11,6 +12,10 @@ inline std::mt19937& rng() {
     thread_local std::mt19937 generator{std::random_device{}()};
     return generator;
 }
+
+// Reseed this thread's generator. A fixed seed makes renders repeatable, so two builds of the
+// same scene can be diffed pixel for pixel.
+inline void seed_rng(std::uint32_t seed) { rng().seed(seed); }
 
 // Uniform in [0, 1)
 inline double random_double() {

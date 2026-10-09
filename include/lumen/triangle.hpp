@@ -13,7 +13,8 @@ class Triangle : public Hittable {
 public:
     // Flat shading: one normal for the whole face.
     Triangle(const Point3& v0, const Point3& v1, const Point3& v2, std::shared_ptr<Material> mat)
-        : v0_(v0), e1_(v1 - v0), e2_(v2 - v0), mat_(std::move(mat)) {
+        : v0_(v0), e1_(v1 - v0), e2_(v2 - v0), mat_(std::move(mat)),
+          bbox_(AABB(v0, v1), AABB(v0, v2)) {            
         face_normal_ = unit_vector(cross(e1_, e2_));
     }
 
@@ -61,6 +62,8 @@ public:
         return true;
     }
 
+    AABB bounding_box() const override { return bbox_; }
+
 private:
     Point3 v0_;
     Vec3 e1_, e2_;  // edges from v0
@@ -68,6 +71,7 @@ private:
     Vec3 n0_, n1_, n2_;
     bool has_vertex_normals_ = false;
     std::shared_ptr<Material> mat_;
+    AABB bbox_;
 };
 
 }  // namespace lumen

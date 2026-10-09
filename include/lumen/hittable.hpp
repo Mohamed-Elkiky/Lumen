@@ -1,5 +1,6 @@
 #pragma once
 
+#include "lumen/aabb.hpp"
 #include "lumen/interval.hpp"
 #include "lumen/ray.hpp"
 #include "lumen/vec3.hpp"
@@ -27,8 +28,10 @@ class Hittable {
 public:
     virtual ~Hittable() = default;
 
-    // True if r hits this object with t strictly inside ray_t; fills rec with the hit.
     virtual bool hit(const Ray& r, Interval ray_t, HitRecord& rec) const = 0;
+
+    // Box that fully contains the object. The BVH is built from these.
+    virtual AABB bounding_box() const = 0;
 };
 
 }  // namespace lumen

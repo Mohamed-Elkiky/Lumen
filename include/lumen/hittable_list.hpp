@@ -12,8 +12,17 @@ class HittableList : public Hittable {
 public:
     HittableList() = default;
 
-    void add(std::shared_ptr<Hittable> object) { objects_.push_back(std::move(object)); }
-    void clear() { objects_.clear(); }
+    void add(std::shared_ptr<Hittable> object) {
+        bbox_ = AABB(bbox_, object->bounding_box());
+        objects_.push_back(std::move(object));
+    }
+    void clear() {
+        objects_.clear();
+        bbox_ = AABB();
+    }
+
+    const std::vector<std::shared_ptr<Hittable>>& objects() const { return objects_; }
+    AABB bounding_box() const override { return bbox_; }
 
     bool hit(const Ray& r, Interval ray_t, HitRecord& rec) const override {
         HitRecord temp;
@@ -33,6 +42,7 @@ public:
 
 private:
     std::vector<std::shared_ptr<Hittable>> objects_;
+    AABB bbox_;
 };
 
 }  // namespace lumen

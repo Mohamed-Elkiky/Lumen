@@ -4,6 +4,7 @@
 #include <stdexcept>
 #include <string>
 
+#include "lumen/bvh.hpp"
 #include "lumen/camera.hpp"
 #include "lumen/hittable.hpp"
 #include "lumen/hittable_list.hpp"
@@ -12,6 +13,7 @@
 #include "lumen/material.hpp"
 #include "lumen/obj_loader.hpp"
 #include "lumen/quad.hpp"
+#include "lumen/random.hpp"
 #include "lumen/ray.hpp"
 #include "lumen/sphere.hpp"
 #include "lumen/triangle.hpp"
@@ -191,12 +193,12 @@ void mesh_scene(HittableList& world, CameraConfig& config, Color& background,
     background = Color{0.7, 0.8, 1.0};
 }
 
-// Utah teapot, ~6.3k triangles. Source units are ~6 wide, so halve it.
+// Utah teapot, ~6.3k triangles. Source is ~6.4 units wide, so shrink it to fit the frame.
 void teapot_scene(HittableList& world, CameraConfig& config, Color& background) {
     Transform t;
-    t.scale = 0.5;
+    t.scale = 0.35;
     t.rotate_y_degrees = -30.0;
-    t.translate = {-0.1, 0.0, 0.0};
+    t.translate = {-0.08, 0.0, 0.0};
     mesh_scene(world, config, background, "assets/models/teapot.obj", t,
                std::make_shared<Metal>(Color{0.85, 0.85, 0.88}, 0.15));
 }
@@ -215,15 +217,40 @@ void bunny_scene(HittableList& world, CameraConfig& config, Color& background) {
 // XYZ RGB dragon, ~250k triangles. The stress test: hopeless without a BVH.
 void dragon_scene(HittableList& world, CameraConfig& config, Color& background) {
     Transform t;
-    t.scale = 0.015;
+    t.scale = 0.011;
     t.rotate_y_degrees = 30.0;
-    t.translate = {0.0, 0.94, 0.0};
+    t.translate = {0.0, 0.46, 0.0};  // feet (y ~ -41) on the floor
     mesh_scene(world, config, background, "assets/models/xyzrgb_dragon.obj", t,
                std::make_shared<Metal>(Color{0.8, 0.6, 0.2}, 0.2));
 }
 
-int main() {
+int main(int argc, char* argv[]) {
     std::cout << "Lumen v" << kVersion << '\n';
+
+    // Flags (stopgap until the Sprint 4 CLI):
+    //   --no-bvh     brute force, test every object (the "before" benchmark)
+    //   --midpoint   median split instead of SAH
+    //   --out FILE   output path (default output.png)
+    bool use_bvh = true;
+    BVHSplit split = BVHSplit::kSAH;
+    std::string out = "output.png";
+    for (int a = 1; a < argc; ++a) {
+        const std::string arg = argv[a];
+        if (arg == "--no-bvh") {
+            use_bvh = false;
+        } else if (arg == "--midpoint") {
+            split = BVHSplit::kMidpoint;
+        } else if (arg == "--out" && a + 1 < argc) {
+            out = argv[++a];
+        } else {
+            std::cerr << "Unknown option: " << arg
+                      << "\nUsage: lumen [--no-bvh] [--midpoint] [--out FILE]\n";
+            return 1;
+        }
+    }
+
+    // Fixed seed: the same scene always renders the same pixels, so renders can be diffed.
+    seed_rng(1337);
 
     HittableList world;
     CameraConfig config;
@@ -235,11 +262,27 @@ int main() {
         //spheres_under_light(world, config, background);
         //triangles_scene(world, config, background);
         //teapot_scene(world, config, background);
-        bunny_scene(world, config, background);
-        //dragon_scene(world, config, background);
+        //bunny_scene(world, config, background);
+        dragon_scene(world, config, background);
     } catch (const std::exception& e) {
         std::cerr << e.what() << '\n';
         return 1;
+    }
+
+    // Acceleration structure
+    const Hittable* scene = &world;
+    std::unique_ptr<BVHNode> bvh;
+    if (use_bvh) {
+        const auto build_start = std::chrono::steady_clock::now();
+        bvh = std::make_unique<BVHNode>(world.objects(), split);
+        const auto build_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                                  std::chrono::steady_clock::now() - build_start)
+                                  .count();
+        std::cout << "Built BVH (" << (split == BVHSplit::kSAH ? "SAH" : "midpoint") << ") over "
+                  << world.objects().size() << " objects in " << build_ms << " ms\n";
+        scene = bvh.get();
+    } else {
+        std::cout << "BVH disabled: testing every object per ray\n";
     }
 
     const Camera camera(config);
@@ -253,8 +296,8 @@ int main() {
         for (int i = 0; i < image.width(); ++i) {
             Color pixel_color{0.0, 0.0, 0.0};
             for (int s = 0; s < camera.samples_per_pixel(); ++s) {
-                pixel_color += ray_color(camera.get_ray(i, j), camera.max_depth(), world, background);
-            }            
+                pixel_color += ray_color(camera.get_ray(i, j), camera.max_depth(), *scene, background);
+            }           
             image.set(i, j, pixel_color / camera.samples_per_pixel());
         }
     }
@@ -263,7 +306,6 @@ int main() {
     const auto end = std::chrono::steady_clock::now();
     const auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 
-    const char* out = "output.png";
     if (!image.write_png(out)) {
         std::cerr << "Failed to write " << out << '\n';
         return 1;

@@ -14,6 +14,7 @@ endif()
 
 add_executable(lumen
   src/main.cpp
+  src/bvh.cpp
   src/camera.cpp
   src/image.cpp
   src/obj_loader.cpp
@@ -52,3 +53,7 @@ target_include_directories(test_obj_loader SYSTEM PRIVATE ${PROJECT_SOURCE_DIR}/
 target_compile_definitions(test_obj_loader PRIVATE
   LUMEN_TEST_DATA_DIR="${PROJECT_SOURCE_DIR}/tests/data")
 add_test(NAME obj_loader COMMAND test_obj_loader)
+
+add_executable(test_bvh tests/test_bvh.cpp src/bvh.cpp)
+target_include_directories(test_bvh PRIVATE ${PROJECT_SOURCE_DIR}/include)
+add_test(NAME bvh COMMAND test_bvh)
